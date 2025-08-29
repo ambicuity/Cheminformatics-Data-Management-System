@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="hero-section text-center py-5">
+            <h1 class="display-4 text-primary">Cheminformatics Data Management System</h1>
+            <p class="lead">A scalable backend system for storing, managing, and retrieving large-scale chemical data</p>
+            <div class="stats-row mt-4">
+                <div class="stat-item">
+                    <h3 class="text-info">{{ compound_count }}</h3>
+                    <p>Chemical Compounds</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="features-section mt-5">
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-database text-primary"></i>
+                                Chemical Data Storage
+                            </h5>
+                            <p class="card-text">Store molecular structures in SMILES format with computed properties including molecular weight, LogP, and TPSA.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-search text-success"></i>
+                                Similarity Search
+                            </h5>
+                            <p class="card-text">Advanced molecular similarity search using Tanimoto coefficients and Morgan fingerprints.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-chart-bar text-warning"></i>
+                                Property Analysis
+                            </h5>
+                            <p class="card-text">Automatic calculation of drug-like properties and molecular descriptors using RDKit.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-cloud text-info"></i>
+                                RESTful API
+                            </h5>
+                            <p class="card-text">Complete CRUD operations through a scalable REST API with pagination and validation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="compound-panel">
+            <h4>Compound Management</h4>
+            
+            <!-- Add New Compound Form -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Add New Compound</h6>
+                </div>
+                <div class="card-body">
+                    <form id="addCompoundForm">
+                        <div class="mb-3">
+                            <label class="form-label">Compound Name</label>
+                            <input type="text" class="form-control" id="compoundName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">SMILES</label>
+                            <input type="text" class="form-control" id="compoundSmiles" placeholder="e.g., CCO" required>
+                            <div class="form-text">Enter a valid SMILES notation</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Add Compound</button>
+                    </form>
+                    <div id="addCompoundResult" class="mt-3"></div>
+                </div>
+            </div>
+
+            <!-- Search Form -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Search Compounds</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Search by Name</label>
+                        <input type="text" class="form-control" id="searchName" placeholder="Enter compound name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Similarity Search</label>
+                        <input type="text" class="form-control" id="searchSmiles" placeholder="Enter SMILES">
+                        <div class="form-text">Minimum similarity: 70%</div>
+                    </div>
+                    <button type="button" class="btn btn-success w-100" onclick="searchCompounds()">Search</button>
+                    <div id="searchResults" class="mt-3"></div>
+                </div>
+            </div>
+
+            <!-- Recent Compounds -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="loadCompounds()">View All Compounds</button>
+                    <button type="button" class="btn btn-outline-info w-100" onclick="showStats()">Database Statistics</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Compounds List Modal -->
+<div class="modal fade" id="compoundsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Compounds Database</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="compoundsList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Add compound form submission
+document.getElementById('addCompoundForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('compoundName').value;
+    const smiles = document.getElementById('compoundSmiles').value;
+    const resultDiv = document.getElementById('addCompoundResult');
+    
+    try {
+        const response = await fetch('/api/compounds', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, smiles })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            resultDiv.innerHTML = `<div class="alert alert-success">Compound added successfully!</div>`;
+            document.getElementById('addCompoundForm').reset();
+            // Update compound count
+            location.reload();
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+});
+
+// Search compounds function
+async function searchCompounds() {
+    const name = document.getElementById('searchName').value;
+    const smiles = document.getElementById('searchSmiles').value;
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (!name && !smiles) {
+        resultsDiv.innerHTML = '<div class="alert alert-warning">Please enter a search term</div>';
+        return;
+    }
+    
+    let url = '/api/search?';
+    if (name) url += `name=${encodeURIComponent(name)}`;
+    if (smiles) url += `query=${encodeURIComponent(smiles)}`;
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (response.ok) {
+            if (data.compounds.length === 0) {
+                resultsDiv.innerHTML = '<div class="alert alert-info">No compounds found</div>';
+            } else {
+                let html = '<div class="mt-3"><h6>Search Results:</h6>';
+                data.compounds.forEach(compound => {
+                    const similarity = compound.similarity ? ` (${(compound.similarity * 100).toFixed(1)}% similar)` : '';
+                    html += `<div class="border p-2 mb-2 rounded">
+                        <strong>${compound.name}</strong>${similarity}<br>
+                        <small class="text-muted">${compound.smiles}</small><br>
+                        <small>MW: ${compound.molecular_weight?.toFixed(2)} | LogP: ${compound.logp?.toFixed(2)}</small>
+                    </div>`;
+                });
+                html += '</div>';
+                resultsDiv.innerHTML = html;
+            }
+        } else {
+            resultsDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+        }
+    } catch (error) {
+        resultsDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+}
+
+// Load all compounds
+async function loadCompounds() {
+    try {
+        const response = await fetch('/api/compounds');
+        const data = await response.json();
+        
+        let html = '<div class="table-responsive"><table class="table table-striped">';
+        html += '<thead><tr><th>Name</th><th>SMILES</th><th>MW</th><th>LogP</th><th>TPSA</th></tr></thead><tbody>';
+        
+        data.compounds.forEach(compound => {
+            html += `<tr>
+                <td><strong>${compound.name}</strong></td>
+                <td><code>${compound.smiles}</code></td>
+                <td>${compound.molecular_weight?.toFixed(2)}</td>
+                <td>${compound.logp?.toFixed(2)}</td>
+                <td>${compound.tpsa?.toFixed(2)}</td>
+            </tr>`;
+        });
+        
+        html += '</tbody></table></div>';
+        html += `<div class="mt-2"><small class="text-muted">Showing ${data.compounds.length} of ${data.total} compounds</small></div>`;
+        
+        document.getElementById('compoundsList').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('compoundsModal')).show();
+        
+    } catch (error) {
+        console.error('Error loading compounds:', error);
+    }
+}
+
+// Show database statistics
+async function showStats() {
+    try {
+        const response = await fetch('/api/compounds');
+        const data = await response.json();
+        
+        alert(`Database Statistics:\n\nTotal Compounds: ${data.total}\nCurrent Page: ${data.current_page}/${data.pages}`);
+    } catch (error) {
+        alert('Error loading statistics');
+    }
+}
+</script>
+{% endblock %}

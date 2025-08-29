@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">Dashboard</h2>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">Total Compounds</h5>
+                <h2 class="text-info">{{ total_compounds }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">API Status</h5>
+                <h4 class="text-success" id="apiStatus">Checking...</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">Database</h5>
+                <h4 class="text-success">SQLite</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">Cheminformatics</h5>
+                <h4 class="text-success">RDKit</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Compounds</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_compounds %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>SMILES</th>
+                                <th>MW</th>
+                                <th>Added</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for compound in recent_compounds %}
+                            <tr>
+                                <td><strong>{{ compound.name }}</strong></td>
+                                <td><code>{{ compound.smiles[:20] }}{% if compound.smiles|length > 20 %}...{% endif %}</code></td>
+                                <td>{{ "%.2f"|format(compound.molecular_weight) if compound.molecular_weight else 'N/A' }}</td>
+                                <td>{{ compound.created_at.strftime('%Y-%m-%d') if compound.created_at else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No compounds in database yet.</p>
+                <a href="{{ url_for('main.index') }}" class="btn btn-primary">Add Your First Compound</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">System Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>API Endpoints</h6>
+                    <ul class="list-unstyled">
+                        <li><span class="badge bg-success">GET</span> /api/compounds</li>
+                        <li><span class="badge bg-primary">POST</span> /api/compounds</li>
+                        <li><span class="badge bg-warning">PUT</span> /api/compounds/&lt;id&gt;</li>
+                        <li><span class="badge bg-danger">DELETE</span> /api/compounds/&lt;id&gt;</li>
+                        <li><span class="badge bg-info">GET</span> /api/search</li>
+                    </ul>
+                </div>
+
+                <div class="mb-3">
+                    <h6>Features</h6>
+                    <ul class="list-unstyled">
+                        <li>✓ SMILES validation with RDKit</li>
+                        <li>✓ Molecular property calculation</li>
+                        <li>✓ Similarity search</li>
+                        <li>✓ RESTful API</li>
+                        <li>✓ Web interface</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h6>Quick Actions</h6>
+                    <button class="btn btn-sm btn-outline-primary me-2" onclick="testAPI()">Test API</button>
+                    <button class="btn btn-sm btn-outline-success" onclick="loadSampleData()">Load Sample Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Check API status
+async function checkAPIStatus() {
+    try {
+        const response = await fetch('/api/health');
+        if (response.ok) {
+            document.getElementById('apiStatus').textContent = 'Online';
+            document.getElementById('apiStatus').className = 'text-success';
+        } else {
+            document.getElementById('apiStatus').textContent = 'Error';
+            document.getElementById('apiStatus').className = 'text-danger';
+        }
+    } catch (error) {
+        document.getElementById('apiStatus').textContent = 'Offline';
+        document.getElementById('apiStatus').className = 'text-danger';
+    }
+}
+
+// Test API function
+async function testAPI() {
+    try {
+        const response = await fetch('/api/health');
+        const data = await response.json();
+        alert(`API Test Result:\n\nStatus: ${data.status}\nMessage: ${data.message}`);
+    } catch (error) {
+        alert(`API Test Failed:\n\nError: ${error.message}`);
+    }
+}
+
+// Load sample data
+async function loadSampleData() {
+    const sampleCompounds = [
+        { name: 'Ethanol', smiles: 'CCO' },
+        { name: 'Aspirin', smiles: 'CC(=O)OC1=CC=CC=C1C(=O)O' },
+        { name: 'Caffeine', smiles: 'CN1C=NC2=C1C(=O)N(C(=O)N2C)C' },
+        { name: 'Morphine', smiles: 'CN1CC[C@]23C4=C5[C@H]1CC[C@]2([C@@H](C4)O)[C@]3(CCC5=CC=C(C=C5)O)O' }
+    ];
+
+    let added = 0;
+    let errors = [];
+
+    for (const compound of sampleCompounds) {
+        try {
+            const response = await fetch('/api/compounds', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(compound)
+            });
+
+            if (response.ok) {
+                added++;
+            } else {
+                const error = await response.json();
+                errors.push(`${compound.name}: ${error.error}`);
+            }
+        } catch (error) {
+            errors.push(`${compound.name}: ${error.message}`);
+        }
+    }
+
+    let message = `Sample Data Loading Complete!\n\nAdded: ${added} compounds`;
+    if (errors.length > 0) {
+        message += `\nErrors: ${errors.length}\n\n${errors.join('\n')}`;
+    }
+    
+    alert(message);
+    
+    if (added > 0) {
+        location.reload();
+    }
+}
+
+// Check API status on page load
+document.addEventListener('DOMContentLoaded', checkAPIStatus);
+</script>
+{% endblock %}

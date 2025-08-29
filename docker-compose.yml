@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://chemdb_user:chemdb_pass@db:5432/chemdb
+      - FLASK_ENV=production
+      - SECRET_KEY=your-super-secret-key-change-this-in-production
+    depends_on:
+      - db
+    volumes:
+      - ./:/app
+    restart: unless-stopped
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=chemdb
+      - POSTGRES_USER=chemdb_user
+      - POSTGRES_PASSWORD=chemdb_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
