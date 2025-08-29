@@ -1,0 +1,12 @@
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+Flask-CORS==4.0.0
+psycopg2-binary==2.9.7
+numpy==1.24.3
+pandas==2.0.3
+requests==2.31.0
+pytest==7.4.2
+python-dotenv==1.0.0
+gunicorn==21.2.0
+# RDKit (may need conda install or special setup)
+# rdkit-pypi==2022.9.5
